@@ -161,6 +161,7 @@ variable "redeployment_trigger" {
 
 resource "aws_api_gateway_rest_api" "api_gateway" {
   name        = "sod-auctions"
+  minimum_compression_size = 1000
   endpoint_configuration {
     types = ["EDGE"]
   }
