@@ -34,6 +34,10 @@ data "aws_lambda_function" "get_price_forecast" {
   function_name = "get_price_forecast_apigw"
 }
 
+data "aws_lambda_function" "get_price_forecasts" {
+  function_name = "get_price_forecasts_apigw"
+}
+
 data "aws_lambda_function" "athena_aggregation_trigger" {
   function_name = "athena_aggregation_trigger"
 }
@@ -216,6 +220,12 @@ resource "aws_api_gateway_resource" "price_forecast_resource" {
   path_part   = "price-forecast"
 }
 
+resource "aws_api_gateway_resource" "price_forecasts_resource" {
+  rest_api_id = aws_api_gateway_rest_api.api_gateway.id
+  parent_id   = aws_api_gateway_rest_api.api_gateway.root_resource_id
+  path_part   = "price-forecasts"
+}
+
 resource "aws_api_gateway_integration" "integration" {
   rest_api_id = aws_api_gateway_rest_api.api_gateway.id
   resource_id = aws_api_gateway_resource.auctions_resource.id
@@ -268,6 +278,15 @@ resource "aws_api_gateway_integration" "integration6" {
   integration_http_method = "POST"
   type = "AWS_PROXY"
   uri  = data.aws_lambda_function.get_price_forecast.invoke_arn
+}
+
+resource "aws_api_gateway_integration" "integration7" {
+  rest_api_id = aws_api_gateway_rest_api.api_gateway.id
+  resource_id = aws_api_gateway_resource.price_forecasts_resource.id
+  http_method = aws_api_gateway_method.method7.http_method
+  integration_http_method = "POST"
+  type = "AWS_PROXY"
+  uri  = data.aws_lambda_function.get_price_forecasts.invoke_arn
 }
 
 resource "aws_api_gateway_method" "method" {
@@ -349,6 +368,21 @@ resource "aws_api_gateway_method" "method6" {
   api_key_required = false
 }
 
+resource "aws_api_gateway_method" "method7" {
+  rest_api_id   = aws_api_gateway_rest_api.api_gateway.id
+  resource_id   = aws_api_gateway_resource.price_forecasts_resource.id
+  http_method   = "GET"
+  authorization = "NONE"
+  request_parameters = {
+    "method.request.querystring.realmId" = true
+    "method.request.querystring.auctionHouseId" = true
+    "method.request.querystring.page" = true
+    "method.request.querystring.sortBy" = false
+  }
+  request_validator_id = aws_api_gateway_request_validator.validator.id
+  api_key_required = false
+}
+
 resource "aws_lambda_permission" "apigw_lambda" {
   statement_id = "AllowAPIGatewayInvoke"
   action = "lambda:InvokeFunction"
@@ -393,6 +427,14 @@ resource "aws_lambda_permission" "apigw_lambda6" {
   statement_id = "AllowAPIGatewayInvoke"
   action = "lambda:InvokeFunction"
   function_name = data.aws_lambda_function.get_price_forecast.function_name
+  principal = "apigateway.amazonaws.com"
+  source_arn = "${aws_api_gateway_rest_api.api_gateway.execution_arn}/*/*"
+}
+
+resource "aws_lambda_permission" "apigw_lambda7" {
+  statement_id = "AllowAPIGatewayInvoke"
+  action = "lambda:InvokeFunction"
+  function_name = data.aws_lambda_function.get_price_forecasts.function_name
   principal = "apigateway.amazonaws.com"
   source_arn = "${aws_api_gateway_rest_api.api_gateway.execution_arn}/*/*"
 }
