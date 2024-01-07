@@ -160,7 +160,7 @@ resource "aws_s3_bucket_notification" "bucket_notification" {
 variable "redeployment_trigger" {
   description = "A dummy variable used to trigger API Gateway deployment if necessary"
   type        = string
-  default     = "10"
+  default     = "11"
 }
 
 resource "aws_api_gateway_rest_api" "api_gateway" {
