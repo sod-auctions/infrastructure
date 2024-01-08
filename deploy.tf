@@ -46,6 +46,10 @@ data "aws_lambda_function" "athena_distributions_trigger" {
   function_name = "athena_distributions_trigger"
 }
 
+data "aws_sns_topic" "results_aggregates" {
+  name = "results-aggregates"
+}
+
 resource "aws_s3_bucket_lifecycle_configuration" "s3-lifecycles" {
   bucket = "sod-auctions"
 
@@ -112,12 +116,12 @@ resource "aws_lambda_permission" "allow_s3" {
   source_arn    = "arn:aws:s3:::sod-auctions"
 }
 
-resource "aws_lambda_permission" "allow_s3_2" {
-  statement_id  = "AllowExecutionFromS3Bucket"
+resource "aws_lambda_permission" "allow_sns" {
+  statement_id  = "AllowExecutionFromSNSTopic"
   action        = "lambda:InvokeFunction"
   function_name = data.aws_lambda_function.athena_results_trigger.function_name
-  principal     = "s3.amazonaws.com"
-  source_arn    = "arn:aws:s3:::sod-auctions"
+  principal     = "sns.amazonaws.com"
+  source_arn    = data.aws_sns_topic.results_aggregates.arn
 }
 
 resource "aws_lambda_permission" "allow_s3_3" {
@@ -138,8 +142,8 @@ resource "aws_s3_bucket_notification" "bucket_notification" {
     filter_suffix       = ".parquet"
   }
 
-  lambda_function {
-    lambda_function_arn = data.aws_lambda_function.athena_results_trigger.arn
+  topic {
+    topic_arn = data.aws_sns_topic.results_aggregates.arn
     events              = ["s3:ObjectCreated:*"]
     filter_prefix       = "results/aggregates"
     filter_suffix       = ".csv"
@@ -151,6 +155,12 @@ resource "aws_s3_bucket_notification" "bucket_notification" {
     filter_prefix       = "results/price-distributions"
     filter_suffix       = ".csv"
   }
+}
+
+resource "aws_sns_topic_subscription" "lambda_subscription" {
+  topic_arn = data.aws_sns_topic.results_aggregates.arn
+  protocol  = "lambda"
+  endpoint  = data.aws_lambda_function.athena_results_trigger.arn
 }
 
 variable "redeployment_trigger" {
