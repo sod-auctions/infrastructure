@@ -50,6 +50,22 @@ data "aws_sns_topic" "results_aggregates" {
   name = "results-aggregates"
 }
 
+data "aws_iam_policy_document" "sns_topic_policy" {
+  statement {
+    actions = ["SNS:Publish"]
+    principals {
+      type        = "Service"
+      identifiers = ["s3.amazonaws.com"]
+    }
+    resources = [data.aws_sns_topic.results_aggregates.arn]
+    condition {
+      test     = "ArnLike"
+      variable = "aws:SourceArn"
+      values   = ["arn:aws:s3:::sod-auctions"]
+    }
+  }
+}
+
 resource "aws_s3_bucket_lifecycle_configuration" "s3-lifecycles" {
   bucket = "sod-auctions"
 
@@ -122,6 +138,11 @@ resource "aws_lambda_permission" "allow_sns" {
   function_name = data.aws_lambda_function.athena_results_trigger.function_name
   principal     = "sns.amazonaws.com"
   source_arn    = data.aws_sns_topic.results_aggregates.arn
+}
+
+resource "aws_sns_topic_policy" "sns_topic_policy" {
+  arn    = data.aws_sns_topic.results_aggregates.arn
+  policy = data.aws_iam_policy_document.sns_topic_policy.json
 }
 
 resource "aws_lambda_permission" "allow_s3_3" {
