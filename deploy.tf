@@ -196,11 +196,11 @@ resource "aws_sns_topic_subscription" "lambda_subscription" {
   endpoint  = data.aws_lambda_function.athena_results_trigger.arn
 }
 
-resource "aws_sns_topic_subscription" "lambda_subscription2" {
-  topic_arn = data.aws_sns_topic.results_aggregates.arn
-  protocol  = "lambda"
-  endpoint  = data.aws_lambda_function.average_prices_calculation_trigger.arn
-}
+#resource "aws_sns_topic_subscription" "lambda_subscription2" {
+#  topic_arn = data.aws_sns_topic.results_aggregates.arn
+#  protocol  = "lambda"
+#  endpoint  = data.aws_lambda_function.average_prices_calculation_trigger.arn
+#}
 
 variable "redeployment_trigger" {
   description = "A dummy variable used to trigger API Gateway deployment if necessary"
