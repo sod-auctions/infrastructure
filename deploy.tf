@@ -46,6 +46,10 @@ data "aws_lambda_function" "athena_distributions_trigger" {
   function_name = "athena_distributions_trigger"
 }
 
+data "aws_lambda_function" "average_prices_calculation_trigger" {
+  function_name = "average_prices_calculation_trigger"
+}
+
 data "aws_sns_topic" "results_aggregates" {
   name = "results-aggregates"
 }
@@ -140,6 +144,14 @@ resource "aws_lambda_permission" "allow_sns" {
   source_arn    = data.aws_sns_topic.results_aggregates.arn
 }
 
+resource "aws_lambda_permission" "allow_sns2" {
+  statement_id  = "AllowExecutionFromSNSTopic"
+  action        = "lambda:InvokeFunction"
+  function_name = data.aws_lambda_function.average_prices_calculation_trigger.function_name
+  principal     = "sns.amazonaws.com"
+  source_arn    = data.aws_sns_topic.results_aggregates.arn
+}
+
 resource "aws_sns_topic_policy" "sns_topic_policy" {
   arn    = data.aws_sns_topic.results_aggregates.arn
   policy = data.aws_iam_policy_document.sns_topic_policy.json
@@ -182,6 +194,12 @@ resource "aws_sns_topic_subscription" "lambda_subscription" {
   topic_arn = data.aws_sns_topic.results_aggregates.arn
   protocol  = "lambda"
   endpoint  = data.aws_lambda_function.athena_results_trigger.arn
+}
+
+resource "aws_sns_topic_subscription" "lambda_subscription2" {
+  topic_arn = data.aws_sns_topic.results_aggregates.arn
+  protocol  = "lambda"
+  endpoint  = data.aws_lambda_function.average_prices_calculation_trigger.arn
 }
 
 variable "redeployment_trigger" {
