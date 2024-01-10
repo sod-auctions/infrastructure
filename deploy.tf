@@ -50,6 +50,10 @@ data "aws_lambda_function" "average_prices_calculation_trigger" {
   function_name = "average_prices_calculation_trigger"
 }
 
+data "aws_lambda_function" "average_prices_results_trigger" {
+  function_name = "average_prices_results_trigger"
+}
+
 data "aws_sns_topic" "results_aggregates" {
   name = "results-aggregates"
 }
@@ -126,6 +130,17 @@ resource "aws_s3_bucket_lifecycle_configuration" "s3-lifecycles" {
     }
     status = "Enabled"
   }
+
+  rule {
+    id = "results-average-prices-lt"
+    filter {
+      prefix = "results/average-prices/"
+    }
+    expiration {
+      days = 3
+    }
+    status = "Enabled"
+  }
 }
 
 resource "aws_lambda_permission" "allow_s3" {
@@ -144,6 +159,22 @@ resource "aws_lambda_permission" "allow_sns" {
   source_arn    = data.aws_sns_topic.results_aggregates.arn
 }
 
+resource "aws_lambda_permission" "allow_s3_2" {
+  statement_id  = "AllowExecutionFromS3Bucket"
+  action        = "lambda:InvokeFunction"
+  function_name = data.aws_lambda_function.average_prices_results_trigger.function_name
+  principal     = "s3.amazonaws.com"
+  source_arn    = "arn:aws:s3:::sod-auctions"
+}
+
+resource "aws_lambda_permission" "allow_s3_3" {
+  statement_id  = "AllowExecutionFromS3Bucket"
+  action        = "lambda:InvokeFunction"
+  function_name = data.aws_lambda_function.athena_distributions_trigger.function_name
+  principal     = "s3.amazonaws.com"
+  source_arn    = "arn:aws:s3:::sod-auctions"
+}
+
 resource "aws_lambda_permission" "allow_sns2" {
   statement_id  = "AllowExecutionFromSNSTopic"
   action        = "lambda:InvokeFunction"
@@ -157,23 +188,8 @@ resource "aws_sns_topic_policy" "sns_topic_policy" {
   policy = data.aws_iam_policy_document.sns_topic_policy.json
 }
 
-resource "aws_lambda_permission" "allow_s3_3" {
-  statement_id  = "AllowExecutionFromS3Bucket"
-  action        = "lambda:InvokeFunction"
-  function_name = data.aws_lambda_function.athena_distributions_trigger.function_name
-  principal     = "s3.amazonaws.com"
-  source_arn    = "arn:aws:s3:::sod-auctions"
-}
-
 resource "aws_s3_bucket_notification" "bucket_notification" {
   bucket = "sod-auctions"
-
-  lambda_function {
-    lambda_function_arn = data.aws_lambda_function.athena_aggregation_trigger.arn
-    events              = ["s3:ObjectCreated:*"]
-    filter_prefix       = "data/"
-    filter_suffix       = ".parquet"
-  }
 
   topic {
     topic_arn = data.aws_sns_topic.results_aggregates.arn
@@ -183,9 +199,23 @@ resource "aws_s3_bucket_notification" "bucket_notification" {
   }
 
   lambda_function {
+    lambda_function_arn = data.aws_lambda_function.athena_aggregation_trigger.arn
+    events              = ["s3:ObjectCreated:*"]
+    filter_prefix       = "data/"
+    filter_suffix       = ".parquet"
+  }
+
+  lambda_function {
     lambda_function_arn = data.aws_lambda_function.athena_distributions_trigger.arn
     events              = ["s3:ObjectCreated:*"]
     filter_prefix       = "results/price-distributions"
+    filter_suffix       = ".csv"
+  }
+
+  lambda_function {
+    lambda_function_arn = data.aws_lambda_function.average_prices_results_trigger.arn
+    events              = ["s3:ObjectCreated:*"]
+    filter_prefix       = "results/average-prices"
     filter_suffix       = ".csv"
   }
 }
